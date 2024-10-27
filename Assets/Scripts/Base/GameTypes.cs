@@ -27,6 +27,31 @@ public struct Int2Val
     }
 }
 
+[Serializable]
+public struct Float2Val
+{
+    public float current;
+    public float max;
+    public Float2Val(float max, float current)
+    {
+        this.max = max;
+        this.current = current;
+    }
+}
+
+[Serializable]
+public struct Float2ValMin
+{
+    public float min;
+    public float max;
+    public Float2ValMin(float max, float min)
+    {
+        this.max = max;
+        this.min = min;
+    }
+}
+
+
 public enum UnitGroupType
 { 
     Player,

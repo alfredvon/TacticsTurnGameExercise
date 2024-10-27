@@ -8,7 +8,11 @@ public class GridManager : MonoBehaviour
     Tile[,] grid;
     [SerializeField] int length = 25;
     [SerializeField] int width = 25;
+    [SerializeField] float originY = 0f;
+    [SerializeField] float rayCheckHeight = 100f;
+    [SerializeField] float rayLength = float.MaxValue;
     [SerializeField] float cellSize = 1f;
+    [SerializeField] float cellHeightDelta = 0f;
     [SerializeField] LayerMask obstacleLayer;
     [SerializeField] LayerMask gridLayer;
     [SerializeField] GameObject tilePrefab;
@@ -70,19 +74,26 @@ public class GridManager : MonoBehaviour
             for (int x = 0; x < length; ++x)
             {
                 Vector3 tilePos = GetTileWorldPosition(x, y);
+                bool passable = true;
                 //elevation
-                Ray ray = new Ray(tilePos + Vector3.up * 100f, Vector3.down);
-                if (Physics.Raycast(ray, out hit, float.MaxValue, gridLayer))
+                Ray ray = new Ray(tilePos + Vector3.up * rayCheckHeight, Vector3.down);
+                if (Physics.Raycast(ray, out hit, rayLength, gridLayer))
                 {
                     if (Mathf.Abs(hit.point.y) > 0.01f)
-                        tilePos.y = hit.point.y;
+                        tilePos.y = hit.point.y + cellHeightDelta;
+                }
+                else
+                {
+                    //in air
+                    passable = false;
                 }
                 GameObject tileObject = Instantiate(tilePrefab, tilePos, Quaternion.identity, tileRoot.transform);
                 Tile tile = tileObject.GetComponent<Tile>();
                 tile.SetPos(x, y);
                 tile.SetElevation(hit.point.y);
-                //passable
-                bool passable = !Physics.CheckBox(tilePos, Vector3.one / 2 * cellSize, Quaternion.identity, obstacleLayer);
+                //passable check obstacle
+                if (passable == true)
+                    passable = !Physics.CheckBox(tilePos, Vector3.one / 2 * cellSize, Quaternion.identity, obstacleLayer);
                 tile.SetPassable(passable);
                 tile.SetWorldPosition(tilePos);
                 tile.HideHighlight();
@@ -95,7 +106,7 @@ public class GridManager : MonoBehaviour
 
     Vector3 GetTileWorldPosition(int x, int y, float elevation = 0f)
     {
-        return new Vector3(transform.position.x + (x * cellSize), elevation, transform.position.z + (y * cellSize));
+        return new Vector3(transform.position.x + (x * cellSize), originY + elevation, transform.position.z + (y * cellSize));
     }
 
     private void OnDrawGizmos()

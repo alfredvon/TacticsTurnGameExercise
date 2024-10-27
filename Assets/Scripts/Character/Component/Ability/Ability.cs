@@ -48,6 +48,8 @@ public abstract class Ability
     public AbilityEffectRangeType effectRangeType = AbilityEffectRangeType.Single;
     //effect type 作用类型
     public AbilityEffectType effectType = AbilityEffectType.Damage;
+    //使用次数 
+    public int useCouts = 1;
     //伤害掷骰
     public int diceType; //骰子类型
     public int diceCount; //骰子数量
@@ -56,11 +58,24 @@ public abstract class Ability
     public AbilityCostType costType = AbilityCostType.Action;
     //animation 使用动画
     public CharacterAnimation abilityAnimation = CharacterAnimation.MeleeAttack;
+    //攻击和计算被击等待时间（后续可能用animation event来做）
+    public float startEffectInterval = 0.5f;
+    public float animInterval = 1.5f;
+
+    //有的技能可以使用多次，只扣除一次行动资源
+    private bool alreadyCostActPoint = false;
+    
+
     public virtual HashSet<Tile> GetTilesInRange(Vector2Int start, TileFinding tile_finding)
-    { 
+    {
         HashSet<Tile> retTiles = new HashSet<Tile>();
         retTiles = tile_finding.GetTilesInRange(start, rangeMin, rangeMax, rangeExcludeStart);
         return retTiles;
+    }
+
+    public virtual void OnDestroy()
+    {
+
     }
 
     public virtual void Perform(Tile target_tile)
@@ -72,7 +87,12 @@ public abstract class Ability
             return;
         }
         //cost
-        owner.DoAbilityCost(costType);
+        if (alreadyCostActPoint == false)
+        {
+            alreadyCostActPoint = true; 
+            owner.DoAbilityCost(costType);
+        }
+        useCouts--;
         //change character turn state
         owner.SetCharacterTurnState(CharacterTurnState.AbilityPerform);
         //apply
@@ -83,23 +103,31 @@ public abstract class Ability
 
     protected virtual bool CanPerform()
     {
+        bool pointOk = false;
         switch (costType)
         {
             case AbilityCostType.Action:
-                return owner.ActionPoints > 0;
+                pointOk = owner.ActionPoints > 0;
+                break;
             case AbilityCostType.BonusAction:
-                return owner.BonusActionPoints > 0;
+                pointOk = owner.BonusActionPoints > 0;
+                break;
             case AbilityCostType.Reaction:
-                return owner.ReactionPoints > 0;
+                pointOk = owner.ReactionPoints > 0;
+                break;
             default:
-                return false;
+                break;
         }
+        bool countOk = useCouts > 0;
+        return pointOk || countOk;
     }
 
     protected virtual bool IsTarget(Character target)
     {
         return owner.Group != target.Group;
     }
+
+   
 
     protected abstract void OnApply(Tile target_tile);
 }

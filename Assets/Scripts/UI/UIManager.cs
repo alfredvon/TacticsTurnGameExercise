@@ -5,6 +5,10 @@ using UnityEngine;
 public class UIManager : MonoBehaviour
 {
     [SerializeField] CommandPanel commandPanel;
+    [Header("FloatingMessage")]
+    [SerializeField] GameObject messagePrefab;
+    [SerializeField] Transform floatingMessageRoot;
+    [SerializeField] Vector3 floatingMessagePosDelta;
 
     private void Start()
     {
@@ -29,5 +33,21 @@ public class UIManager : MonoBehaviour
     public CommandPanel GetCommandPanel()
     { 
         return commandPanel;
+    }
+
+    public void CreateFloatingMessage(Vector3 position, string message)
+    {
+        if (messagePrefab == null)
+        {
+            Debug.LogError("No message prefab.");
+            return;
+        }
+
+        GameObject instance = Instantiate(messagePrefab, floatingMessageRoot);
+        instance.transform.position = position + floatingMessagePosDelta;
+        var floatingMessage = instance.GetComponent<FloatingMessage>();
+        floatingMessage.originPos = position + floatingMessagePosDelta;
+        floatingMessage.message = message;
+        floatingMessage.duration = 1.5f;
     }
 }

@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.Search;
 using UnityEngine;
 using static DiceManager;
 
@@ -33,10 +32,12 @@ public class Character : MonoBehaviour
     public List<Ability> BonusActionList = new List<Ability>();
     public List<Ability> ReactionList = new List<Ability>();
     public Ability CurrentAbility = null;   //当前选择的技能
+    public int TestAbilityID = 0;
     public CharacterTurnState CurrentState { get; private set; } = CharacterTurnState.None;
     public Unit ParentUnit { get; private set; }
 
     public void SetParentUnit(Unit parent_unit) => ParentUnit = parent_unit;
+
 
     private void Start()
     {
@@ -45,25 +46,53 @@ public class Character : MonoBehaviour
 
     private void Init()
     {
-        //test
-        MeleeAbility ability = new MeleeAbility();
-        ability.owner = this;
-        ability.rangeMin = 1;
-        ability.rangeMax = 2;
-        ability.diceCount = 2;
-        ability.diceType = 6;
-        ActionList.Add(ability);
-        CurrentAbility = ActionList[0];
-        Debug.Log("ability set");
+        
+        InitAblitiyForTest();
 
         InitModifier();
 
         ResetTurnRes();
     }
 
+    private void InitAblitiyForTest()
+    {
+        //test
+        MeleeAbility ability = new MeleeAbility();
+        ability.owner = this;
+        ability.rangeMin = 1;
+        ability.rangeMax = 2;
+        ability.useCouts = 1;
+        ability.diceCount = 2;
+        ability.diceType = 6;
+        if (Name.Contains("Goblin"))
+        {
+            ability.startEffectInterval = 2f;
+            ability.animInterval = 3f;
+        }
+        ActionList.Add(ability);
+
+        if (Group == UnitGroupType.Player)
+        {
+            RayAbility rayAbility = new RayAbility();
+            rayAbility.owner = this;
+            rayAbility.rangeMin = 1;
+            rayAbility.rangeMax = 120 / 5;
+            rayAbility.diceCount = 2;
+            rayAbility.diceType = 6;
+            rayAbility.useCouts = 3;
+            rayAbility.hitPrefabName = "FireHit";
+            rayAbility.rayPrefabName = "ScorchingRay";
+            rayAbility.launchPositionModify = new Vector3(0, -1f, 0);
+            ActionList.Add(rayAbility);
+        }
+        
+        CurrentAbility = ActionList[TestAbilityID];
+        Debug.Log("ability set");
+    }
+
     private void InitModifier()
     {
-        Modifier = new CharacterBaseAttribute();
+        Modifier = ScriptableObject.CreateInstance<CharacterBaseAttribute>();
         Modifier.STR = ModifierCalculate(BaseAttribute.STR);
         Modifier.DEX = ModifierCalculate(BaseAttribute.DEX);
         Modifier.CON = ModifierCalculate(BaseAttribute.CON);
@@ -78,6 +107,24 @@ public class Character : MonoBehaviour
     {
         int sign = val >= 10 ? 1 : -1;
         return Mathf.FloorToInt(Mathf.Abs(val - 10) * 0.5f) * sign;
+    }
+
+    private void OnDestroy()
+    {
+        //destroy ability load resources
+        CurrentAbility = null;
+        DestroyAbilityList(ActionList);
+        DestroyAbilityList(BonusActionList);
+        DestroyAbilityList(ReactionList);
+
+    }
+
+    private void DestroyAbilityList(List<Ability> ability_list)
+    {
+        foreach (Ability ability in ability_list)
+        {
+            ability.OnDestroy();
+        }
     }
 
     public void SetCharacterTurnState(CharacterTurnState state)
@@ -111,7 +158,7 @@ public class Character : MonoBehaviour
         RemainingMovePoints = MovePoints;
     }
 
-    public void DoTurnEnd()
+    public void OnTurnEnd()
     {
         TurnEnd = true;
         TurnMoveDone = true;
@@ -209,6 +256,12 @@ public class Character : MonoBehaviour
             default:
                 return 0;
         }
+    }
+
+    public void OnAbilityPerformDone()
+    {
+        ParentUnit.ClearAbilityRangeTiles();
+        SetCharacterTurnState(CharacterTurnState.AbilityPerformDone);
     }
 
     private void OnDeath()

@@ -8,7 +8,9 @@ using UnityEngine.TextCore.Text;
 
 public class StageManager : Singleton<StageManager>
 {
-    [SerializeField] GridController gridController;
+    [SerializeField] StageMainController mainController;
+    public GameObject cameraRig;
+
     [SerializeField] List<Unit> playerUnits = new List<Unit>();
     [SerializeField] List<Unit> enemyUnits = new List<Unit>();
 
@@ -61,7 +63,7 @@ public class StageManager : Singleton<StageManager>
         if (curUnit == null || curUnit.Character.TurnEnd == true)
             return;
         OnDeselectUnit();
-        curUnit.Character.DoTurnEnd();
+        curUnit.OnTurnEnd();
     }
 
     public void OnClickCommandPanelCancel()
@@ -195,6 +197,9 @@ public class StageManager : Singleton<StageManager>
         
         uiManager = GameManager.Instance.UIManager;
 
+        GameManager.Instance.ChangeController(mainController);
+        GameManager.Instance.SetInputLock(true);
+
         ResetStage();
         ChangeState(StageState.GenerateGrid);
     }
@@ -277,9 +282,15 @@ public class StageManager : Singleton<StageManager>
         if (activeUnits.Count > 0)
         {
             curUnit = activeUnits.Dequeue();
+            GameManager.Instance.SetInputLock(curUnit.Character.IsAI);
+            mainController.cameraController.follow = curUnit.gameObject.transform;
+            mainController.gridController.ShowOrHideIndicator(!curUnit.Character.IsAI);
+
             curUnit.SetMovableTiles(gridManager.TileFinding.GetMovableTiles(curUnit.CurrentTile.Position, curUnit.Character.MovePoints));
+            
             if (curUnit.Character.IsAI)
             {
+                GameManager.Instance.SetInputLock(curUnit);
                 curUnit.GetAI().TakeTurn();
             }
         }
@@ -399,7 +410,7 @@ public class StageManager : Singleton<StageManager>
         if (selectUnit.IsEqual(curUnit) == false)
             return;
         CharacterTurnState cState = selectUnit.Character.CurrentState;
-        if (cState == CharacterTurnState.AbilityTargetSelect)
+        if (cState == CharacterTurnState.AbilityTargetSelect || cState == CharacterTurnState.AbilityPerform)
         {
             selectUnit.ConfirmAbilityTarget(select_tile);
         }

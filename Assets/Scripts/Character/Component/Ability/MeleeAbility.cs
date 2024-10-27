@@ -16,7 +16,7 @@ public class MeleeAbility : Ability
         //play anim
         owner.ParentUnit.PlayCharacterAnimation(abilityAnimation, true);
         //wait apply effect time
-        yield return new WaitForSeconds(.5f);
+        yield return new WaitForSeconds(startEffectInterval);
         if (effectRangeType == AbilityEffectRangeType.Single)
         {
             if (target_tile.HasUnit())
@@ -32,16 +32,19 @@ public class MeleeAbility : Ability
                         //roll damage
                         target_tile.GetUnit().TakeDamage(owner.CalculateAbilityDamage());
                     }
+                    else
+                    {
+                        GameManager.Instance.UIManager.CreateFloatingMessage(target_tile.WorldPosition, "Miss");
+                    }
                 }
                 
             }
         }
-        yield return new WaitForSeconds(1.0f);
+        yield return new WaitForSeconds(animInterval - startEffectInterval);
         //stop anim
         owner.ParentUnit.PlayCharacterAnimation(abilityAnimation, false);
         //perform done
-        owner.SetCharacterTurnState(CharacterTurnState.AbilityPerformDone);
-
+        owner.OnAbilityPerformDone();
 
     }
 }

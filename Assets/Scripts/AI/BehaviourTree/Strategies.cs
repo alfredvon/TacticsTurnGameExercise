@@ -102,7 +102,7 @@ namespace SelfAI.BehaviourTree
 
         public Node.Status Process()
         {
-            ai.controlUnit.Character.DoTurnEnd();
+            ai.controlUnit.OnTurnEnd();
             ai.StopAI();
             return Node.Status.Success;
         }

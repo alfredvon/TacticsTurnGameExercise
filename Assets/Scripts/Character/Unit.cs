@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using TreeEditor;
 using UnityEngine;
 
 public class Unit : MonoBehaviour
@@ -10,6 +9,8 @@ public class Unit : MonoBehaviour
 
     [SerializeField] UnitAnimator animator;
     [SerializeField] float moveSpeed = 1f;
+    public Transform rayStartPoint;
+    public Transform hitEffectPoint;
 
     public Tile CurrentTile { get; private set; }
     public bool IsMoving { get; private set; }
@@ -104,10 +105,8 @@ public class Unit : MonoBehaviour
         if (IsInAbilityRangeTiles(target_tile) == false)
             return;
 
-        if (Character.CurrentState == CharacterTurnState.AbilityPerform)
-            return;
-
-        ClearAbilityRangeTiles();
+        //if (Character.CurrentState == CharacterTurnState.AbilityPerform)
+        //    return;
 
         Character.CurrentAbility.Perform(target_tile);
     }
@@ -125,14 +124,17 @@ public class Unit : MonoBehaviour
         return Character.ID == other.Character.ID;
     }
 
-    public void TakeDamage(int damage)
+    public void TakeDamage(int damage, GameObject hit_effect = null)
     { 
-       StartCoroutine(HitCoroutine(damage)); 
+       StartCoroutine(HitCoroutine(damage, hit_effect)); 
     }
 
-    IEnumerator HitCoroutine(int damage)
+    IEnumerator HitCoroutine(int damage, GameObject hit_effect)
     {
         Character.TakeDamage(damage);
+        
+        GameManager.Instance.UIManager.CreateFloatingMessage(CurrentTile.WorldPosition, damage.ToString());
+        
         if (Character.IsDeath())
         {
             animator.PlayDeathOrOff(true);
@@ -140,9 +142,14 @@ public class Unit : MonoBehaviour
         else
         {
             animator.PlayHitOrOff(true);
+            if (hit_effect != null)
+            {
+                Instantiate(hit_effect, hitEffectPoint.position, hitEffectPoint.rotation, GameManager.Instance.FXTransform);
+            }
         }
         //wait for hit animation
         yield return new WaitForSeconds(.5f);
+       
         if (Character.IsDeath() == false)
             animator.PlayHitOrOff(false);
     }
@@ -167,12 +174,7 @@ public class Unit : MonoBehaviour
 
     }
 
-    private void ChangeCharacterTurnState(CharacterTurnState state)
-    {
-        Character.SetCharacterTurnState(state);
-    }
-
-    private void ClearAbilityRangeTiles()
+    public void ClearAbilityRangeTiles()
     {
         if (abilityRangeTiles == null)
             return;
@@ -180,6 +182,29 @@ public class Unit : MonoBehaviour
             tile.HideHighlight();
         abilityRangeTiles = null;
     }
+
+    public void ClearMovableTiles()
+    {
+        if (movableTiles == null)
+            return;
+        foreach (Tile tile in movableTiles)
+            tile.HideHighlight();
+        movableTiles = null;
+    }
+
+    public void OnTurnEnd()
+    {
+        ClearAbilityRangeTiles();
+        
+        Character.OnTurnEnd();
+    }
+
+    private void ChangeCharacterTurnState(CharacterTurnState state)
+    {
+        Character.SetCharacterTurnState(state);
+    }
+
+    
 
     private void Update()
     {
@@ -199,9 +224,7 @@ public class Unit : MonoBehaviour
                     CurrentTile.RemoveUnit();
                     CurrentTile = nextTile;
                     CurrentTile.PlaceUnit(this);
-                    foreach (Tile tile in movableTiles)
-                        tile.HideHighlight();
-                    movableTiles = null;
+                    ClearMovableTiles();
                     animator?.PlayMoveOrOff(false);
                     IsMoving = false;
                     ChangeCharacterTurnState(CharacterTurnState.AbilityTargetSelect);
